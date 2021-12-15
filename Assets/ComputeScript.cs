@@ -1,6 +1,6 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
+using SFB;
+using System.IO;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class ComputeScript : MonoBehaviour
@@ -10,24 +10,46 @@ public class ComputeScript : MonoBehaviour
     public int width = 2048;
     public int height = 2048;
     public Texture startTexture;
-    private RenderTexture texture;
+    public RenderTexture texture;
+    public bool overrideCamera = false;
     public float updateEvery = 0.5f;
     private float time = 0f;
 
     private void Update()
     {
         time += Time.deltaTime;
-        if(time > updateEvery)
+        float speedPercent = transform.position.y / 4.5f;
+        updateEvery = Mathf.Lerp(0.03f,0.0005f,speedPercent);
+        if (time > updateEvery)
         {
             RunShader();
             time = 0f;
         }
     }
 
+    public void openImage()
+    {
+        // Open file with filter
+        var extensions = new[] {
+            new ExtensionFilter("Image Files", "png", "jpg", "jpeg" )
+        };
+        var path = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true)[0];
+        if (path.Length != 0)
+        {
+            var fileContent = File.ReadAllBytes(path);
+            Texture2D newtext = new Texture2D(4096, 4096);
+            newtext.LoadImage(fileContent);
+            Graphics.Blit(newtext, texture);
+        }
+    }
+
     private void Awake()
     {
-        texture = new RenderTexture(width, height, 24);
+        if(texture == null) { 
+            texture = new RenderTexture(width, height, 24);
+        }
         texture.enableRandomWrite = true;
+        texture.filterMode = FilterMode.Point;
         texture.Create();
         shader.SetTexture(0, "Result", texture);
         shader.SetFloat("width", texture.width);
@@ -37,7 +59,12 @@ public class ComputeScript : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(texture, destination);
+        if(overrideCamera) { 
+            Graphics.Blit(texture, destination);
+        } else
+        {
+            Graphics.Blit(source, destination);
+        }
     }
 
     public void RunShader()
