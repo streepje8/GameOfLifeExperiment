@@ -1,0 +1,45 @@
+#pragma kernel CSMain
+
+RWTexture2D<float4> Result;
+
+float width;
+float height;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    //This code is pretty bad and unoptimized, but it works and since this is an experiment im not fixing it
+    float x = id.x / width;
+    float y = id.y / height;
+    float4 currentColor = Result[id.xy];
+    int neighbors = 0;
+    for (int cx = -1; cx < 2; cx++) {
+        for (int cy = -1; cy < 2; cy++) {
+            if (!(cx == 0 && cy == 0)) {
+                if (Result[id.xy + float2(cx, cy)].x > 0) {
+                    neighbors++;
+                }
+            }
+        }
+    }
+    if (neighbors < 2) {
+        currentColor.xz = 0;
+    }
+    if (neighbors > 2 && currentColor.x < 1) {
+        currentColor.xyz = 1;
+    }
+    if (neighbors > 3) {
+        currentColor.xy = 0;
+    }
+
+    if (currentColor.y > 0) {
+        currentColor.y -= 0.005;
+    }
+    if (currentColor.z > 0) {
+        currentColor.z -= 0.005;
+        if (currentColor.z < 0.1) {
+            currentColor.xyz = 1;
+        }
+    }
+    Result[id.xy] = currentColor;
+}
